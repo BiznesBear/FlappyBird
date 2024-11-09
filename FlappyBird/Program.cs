@@ -42,9 +42,7 @@ internal class GameInput(GameMaster m) : InputHandler(m)
     {
         base.OnMouseDown(buttons);
         if(buttons == MouseButtons.Left)
-        {
             Program.Game.MainScene.player.Jump();
-        }
     }
 }
 internal class MainScene : Hierarchy
@@ -77,68 +75,75 @@ internal class MainScene : Hierarchy
         if(timer > Pipe.spawnDelay)
         {
             var r = new Random();
-            float offset = r.Next(-2, 1) - (float)r.NextDouble();
-            Wrint.Info(offset);
-            Pipe pipeUp = new() { Position = new(4.5f,offset), Scale = new(13,20) };
-            Pipe pipeDown = new() { Position = new(4.5f,offset+5), Scale = new(13,20) };
-            
-            Objects = [pipeUp,pipeDown];
+            float offset = -(float)r.NextDouble() -1f;
+
+            Pipe pipeUp = new() { Position = new(4.5f, offset), Scale = new(13, 20) };
+            Pipe pipeDown = new() { Position = new(4.5f, offset + 5), Scale = new(13, 20) };
+
+            Objects = [pipeUp, pipeDown];
             colliders.Update();
             timer = 0;
         }
     }
 }
 
-internal class Player : CollidingSprite
+internal class Player : GravityTransform
 {
-    private Gravity gravity = new(0.003f,0.06f);
-    private const float jumpStrenght = 0.1f;
-
-    public Player() : base(Program.birdSprite)
+    private const float jumpStrenght = 3f;
+    private CollidingBitmap bitmap;
+    public Player()
     {
-        Scale = 13;
+        bitmap = new(Program.birdSprite);
+        MaxVelocity = 0.2f;
+        bitmap.Scale = 13;
     }
     public override void OnCreate(Hierarchy h, GameMaster m)
     {
         base.OnCreate(h, m);
+        bitmap.SetMaster(m);
         Position = GetMaster().WindowCenter.ToVec2(GetMaster()) - Vec2.Right;
     }
     public override void OnUpdate(GameMaster m)
     {
         base.OnUpdate(m);
-        Position = gravity.Calculate(Position);
 
+        bitmap.Position = Position;
+        bitmap.OnUpdate(m);
         // check if bird is still in borders
         if (Position.Y > 5f || Position.Y < 0f) Die();
         
-        if (this.IsColliding(Program.Game.MainScene.colliders,out ICollide? collider))
+        if (bitmap.IsColliding(Program.Game.MainScene.colliders,out ICollide? collider))
         {
-            if (collider == this) return;
+
             Die();
         }
     }
+    public override void OnDraw(GameMaster m)
+    {
+        base.OnDraw(m);
+        bitmap.OnDraw(m);
+        bitmap.Draw(m,m.Renderer);
+    }
     public void Jump()
     {
-        gravity.AddForce(jumpStrenght, Vec2.Up);
+        ResetVelocity();
+        AddForce(new(jumpStrenght, Vec2.Up));
     }
 
     private void Die()
     {
         Wrint.Error("You died");
-        Application.Exit();
+        GetMaster().TimeMaster.Stop();
     }
 }
-internal class Pipe : CollidingSprite
+internal class Pipe : CollidingBitmap
 {
     public const float speed = 1.3f;
     public const float spawnDelay = 2.66f;
     public const float destroyAfter = 5;
 
     private float timer;
-    public Pipe() : base(Program.pipeSprite)
-    {
-
-    }
+    public Pipe() : base(Program.pipeSprite) { }
     public override void OnUpdate(GameMaster m)
     {
         base.OnUpdate(m);
