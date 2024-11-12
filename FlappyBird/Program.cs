@@ -90,7 +90,7 @@ internal class MainScene : Hierarchy
 internal class Player : GravityTransform
 {
     private const float jumpStrenght = 3f;
-    private CollidingBitmap bitmap;
+    private CollidingBitmapRenderer bitmap;
     public Player()
     {
         bitmap = new(Program.birdSprite);
@@ -136,7 +136,7 @@ internal class Player : GravityTransform
         GetMaster().TimeMaster.Stop();
     }
 }
-internal class Pipe : CollidingBitmap
+internal class Pipe : CollidingBitmapRenderer
 {
     public const float speed = 1.3f;
     public const float spawnDelay = 2.66f;
