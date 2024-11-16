@@ -4,21 +4,23 @@ using WFGL.Objects;
 using WFGL.Physics;
 using WFGL.Rendering;
 using WFGL.Utilities;
-
+using WFGL.Other.Components;
+using WFGL.UI;
 namespace FlappyBird;
 
 internal class Program
 {
     #pragma warning disable CS8618 
     public static Game Game { get; private set; }
+
     #pragma warning restore CS8618
 
     public static readonly Bitmap birdSprite = new("Bird.png");
     public static readonly Bitmap pipeSprite = new("Pipe.png");
     public static readonly Bitmap background = new("Background.png");
+
     private static void Main(string[] args)
     {
-        
         GameWindow win = new(GameWindowOptions.Default with { Title = "FlappyBird", Size = new(800,800)});
         Game = new(win);
         Game.Load();
@@ -38,11 +40,15 @@ internal class Game : GameMaster
 
 internal class GameInput(GameMaster m) : InputHandler(m)
 {
+    protected override void OnKeyDown(Keys key)
+    {
+        base.OnKeyDown(key);
+        Program.Game.MainScene.player.Jump();
+    }
     protected override void OnMouseDown(MouseButtons buttons)
     {
         base.OnMouseDown(buttons);
-        if(buttons == MouseButtons.Left)
-            Program.Game.MainScene.player.Jump();
+        Program.Game.MainScene.player.Jump();
     }
 }
 internal class MainScene : Hierarchy
@@ -69,7 +75,7 @@ internal class MainScene : Hierarchy
     public override void OnUpdate(GameMaster m)
     {
         base.OnUpdate(m);
-        background.Scale = m.RenderSize.ToVec2(m) * 2;
+        background.Scale = m.RenderSize.ToVec2(m.VirtualScale) * 2;
 
         timer += m.TimeMaster.DeltaTime;
         if(timer > Pipe.spawnDelay)
@@ -94,14 +100,14 @@ internal class Player : GravityTransform
     public Player()
     {
         bitmap = new(Program.birdSprite);
-        MaxVelocity = 0.2f;
+        MaxVelocity = 0.1f;
         bitmap.Scale = 13;
     }
     public override void OnCreate(Hierarchy h, GameMaster m)
     {
         base.OnCreate(h, m);
         bitmap.SetMaster(m);
-        Position = GetMaster().WindowCenter.ToVec2(GetMaster()) - Vec2.Right;
+        Position = GetMaster().WindowCenter.ToVec2(GetMaster().VirtualScale) - Vec2.Right;
     }
     public override void OnUpdate(GameMaster m)
     {
@@ -132,6 +138,10 @@ internal class Player : GravityTransform
 
     private void Die()
     {
+        Program.Game.MainScene.Objects = 
+            [new StringRenderer(new Font(StringRenderer.DEFALUT_FONT_NAME, 20), "YOU DIED", Color.Red) 
+            { Position = GetMaster().WindowCenter.ToVec2(GetMaster().VirtualScale) }];
+
         Wrint.Error("You died");
         GetMaster().TimeMaster.Stop();
     }
