@@ -4,20 +4,23 @@ using WFGL.Objects;
 using WFGL.Physics;
 using WFGL.Rendering;
 using WFGL.Utilities;
-using WFGL.Other.Components;
+using WFGL.Components;
 using WFGL.UI;
+
 namespace FlappyBird;
 
+internal static class Assets
+{
+    public static readonly Bitmap birdSprite = new("Bird.png");
+    public static readonly Bitmap pipeSprite = new("Pipe.png");
+    public static readonly Bitmap background = new("Background.png");
+}
 internal class Program
 {
     #pragma warning disable CS8618 
     public static Game Game { get; private set; }
 
     #pragma warning restore CS8618
-
-    public static readonly Bitmap birdSprite = new("Bird.png");
-    public static readonly Bitmap pipeSprite = new("Pipe.png");
-    public static readonly Bitmap background = new("Background.png");
 
     private static void Main(string[] args)
     {
@@ -32,13 +35,13 @@ internal class Game : GameMaster
     public Game(GameWindow window) : base(window)
     {
         WindowAspectLock = true;
-        RegisterInput(new GameInput(this));
+        GameWindow.RegisterInput(new GameInput());
         MainScene = new(this);
         RegisterHierarchy(MainScene);
     }
 }
 
-internal class GameInput(GameMaster m) : InputHandler(m)
+internal class GameInput : InputHandler
 {
     protected override void OnKeyDown(Keys key)
     {
@@ -62,7 +65,7 @@ internal class MainScene : Hierarchy
     public MainScene(GameMaster m) : base(m) 
     { 
         player = new();
-        background = new(Program.background);
+        background = new(Assets.background);
         colliders = new(this);
 
         Objects = [
@@ -72,12 +75,12 @@ internal class MainScene : Hierarchy
         colliders.Update();
     }
 
-    public override void OnUpdate(GameMaster m)
+    public override void OnUpdate()
     {
-        base.OnUpdate(m);
-        background.Scale = m.RenderSize.ToVec2(m.VirtualScale) * 2;
+        base.OnUpdate();
+        background.Scale = GetMaster().VirtualSize.ToVec2(GetMaster().VirtualScale) * 2;
 
-        timer += m.TimeMaster.DeltaTime;
+        timer += GetMaster().TimeMaster.DeltaTime;
         if(timer > Pipe.spawnDelay)
         {
             var r = new Random();
@@ -99,7 +102,7 @@ internal class Player : GravityTransform
     private CollidingBitmapRenderer bitmap;
     public Player()
     {
-        bitmap = new(Program.birdSprite);
+        bitmap = new(Assets.birdSprite);
         MaxVelocity = 0.1f;
         bitmap.Scale = 13;
     }
@@ -107,28 +110,29 @@ internal class Player : GravityTransform
     {
         base.OnCreate(h, m);
         bitmap.SetMaster(m);
-        Position = GetMaster().WindowCenter.ToVec2(GetMaster().VirtualScale) - Vec2.Right;
+        Position = GetMaster().GameWindow.WindowCenter.ToVec2(GetMaster().VirtualScale) - Vec2.Right;
     }
-    public override void OnUpdate(GameMaster m)
+    public override void OnUpdate()
     {
-        base.OnUpdate(m);
+        base.OnUpdate();
 
         bitmap.Position = Position;
-        bitmap.OnUpdate(m);
-        // check if bird is still in borders
-        if (Position.Y > 5f || Position.Y < 0f) Die();
-        
+        bitmap.OnUpdate();
+
+        // check if bird is still in our view borders
+        if (Position.Y > 5f || Position.Y < 0f) 
+            Die();
+
         if (bitmap.IsColliding(Program.Game.MainScene.colliders,out ICollide? collider))
         {
-
             Die();
         }
     }
-    public override void OnDraw(GameMaster m)
+    public override void OnDraw()
     {
-        base.OnDraw(m);
-        bitmap.OnDraw(m);
-        bitmap.Draw(m,m.Renderer);
+        base.OnDraw();
+        bitmap.OnDraw();
+        bitmap.Draw(GetMaster(),GetMaster().Renderer);
     }
     public void Jump()
     {
@@ -140,7 +144,7 @@ internal class Player : GravityTransform
     {
         Program.Game.MainScene.Objects = 
             [new StringRenderer(new Font(StringRenderer.DEFALUT_FONT_NAME, 20), "YOU DIED", Color.Red) 
-            { Position = GetMaster().WindowCenter.ToVec2(GetMaster().VirtualScale) }];
+            { Position = GetMaster().GameWindow.WindowCenter.ToVec2(GetMaster().VirtualScale) }];
 
         Wrint.Error("You died");
         GetMaster().TimeMaster.Stop();
@@ -148,17 +152,18 @@ internal class Player : GravityTransform
 }
 internal class Pipe : CollidingBitmapRenderer
 {
-    public const float speed = 1.3f;
-    public const float spawnDelay = 2.66f;
-    public const float destroyAfter = 5;
+    public static float speed = 1.3f;
+    public static float spawnDelay = 2.66f;
+    public static float destroyAfter = 5;
 
     private float timer;
-    public Pipe() : base(Program.pipeSprite) { }
-    public override void OnUpdate(GameMaster m)
+
+    public Pipe() : base(Assets.pipeSprite) { }
+    public override void OnUpdate()
     {
-        base.OnUpdate(m);
-        Position -= new Vec2(speed, 0) * m.TimeMaster.DeltaTime;
-        timer += m.TimeMaster.DeltaTime;
+        base.OnUpdate();
+        Position -= new Vec2(speed, 0) * GetMaster().TimeMaster.DeltaTime;
+        timer += GetMaster().TimeMaster.DeltaTime;
         if (timer > destroyAfter) Destroy(Program.Game.MainScene);
     }
 }

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <StartupObject>FlappyBird.Program</StartupObject>
@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <Reference Include="WFGL">
-      <HintPath>..\..\WFGL\WFGL\bin\Debug\net8.0-windows\WFGL.dll</HintPath>
+      <HintPath>..\..\WFGL\WFGL\bin\Release\net9.0-windows7.0\WFGL.dll</HintPath>
     </Reference>
   </ItemGroup>
 
