@@ -6,6 +6,7 @@ using WFGL.Rendering;
 using WFGL.Utilities;
 using WFGL.Components;
 using WFGL.UI;
+using WFGL;
 
 namespace FlappyBird;
 
@@ -14,6 +15,7 @@ internal static class Assets
     public static readonly Bitmap birdSprite = new("Bird.png");
     public static readonly Bitmap pipeSprite = new("Pipe.png");
     public static readonly Bitmap background = new("Background.png");
+    public static readonly Font mainFont = new(StringRenderer.DEFALUT_FONT_NAME, 20);
 }
 internal class Program
 {
@@ -24,6 +26,7 @@ internal class Program
 
     private static void Main(string[] args)
     {
+        WFGLSettings.All = true;
         GameWindow win = new(GameWindowOptions.Default with { Title = "FlappyBird", Size = new(800,800)});
         Game = new(win);
         Game.Load();
@@ -60,57 +63,49 @@ internal class MainScene : Hierarchy
     public readonly BitmapRenderer background;
     public readonly Group<ICollide> colliders;
 
-    private float timer;
-
     public MainScene(GameMaster m) : base(m) 
     { 
         player = new();
         background = new(Assets.background);
         colliders = new(this);
 
-        Objects = [
+        Init = [
             background,
             player
         ];
         colliders.Update();
+        background.Scale = GetMaster().VirtualSize.ToVec2(GetMaster().VirtualScale) * 2;
+        new Counter(m.TimeMaster, Pipe.spawnDelay, true, SpawnPipes);
     }
 
-    public override void OnUpdate()
+    // TODO: Add some sort of optimalizations - use old pipes instead of creating new ones.
+    public void SpawnPipes()
     {
-        base.OnUpdate();
-        background.Scale = GetMaster().VirtualSize.ToVec2(GetMaster().VirtualScale) * 2;
+        var r = new Random();
+        float offset = -(float)r.NextDouble() - 1f;
 
-        timer += GetMaster().TimeMaster.DeltaTime;
-        if(timer > Pipe.spawnDelay)
-        {
-            var r = new Random();
-            float offset = -(float)r.NextDouble() -1f;
+        Pipe pipeUp = new() { Position = new(4.5f, offset), Scale = new(13, 20) };
+        Pipe pipeDown = new() { Position = new(4.5f, offset + 5), Scale = new(13, 20) };
 
-            Pipe pipeUp = new() { Position = new(4.5f, offset), Scale = new(13, 20) };
-            Pipe pipeDown = new() { Position = new(4.5f, offset + 5), Scale = new(13, 20) };
-
-            Objects = [pipeUp, pipeDown];
-            colliders.Update();
-            timer = 0;
-        }
+        Init = [pipeUp, pipeDown];
+        colliders.Update();
     }
 }
 
 internal class Player : GravityTransform
 {
-    private const float jumpStrenght = 3f;
+    private const float jumpStrenght = 175;
     private CollidingBitmapRenderer bitmap;
     public Player()
     {
         bitmap = new(Assets.birdSprite);
-        MaxVelocity = 0.1f;
         bitmap.Scale = 13;
     }
     public override void OnCreate(Hierarchy h, GameMaster m)
     {
         base.OnCreate(h, m);
         bitmap.SetMaster(m);
-        Position = GetMaster().GameWindow.WindowCenter.ToVec2(GetMaster().VirtualScale) - Vec2.Right;
+        Position = GetMaster().Center.ToVec2(GetMaster().VirtualScale) - Vec2.Right;
     }
     public override void OnUpdate()
     {
@@ -137,14 +132,14 @@ internal class Player : GravityTransform
     public void Jump()
     {
         ResetVelocity();
-        AddForce(new(jumpStrenght, Vec2.Up));
+        AddForce(new(jumpStrenght * GetMaster().TimeMaster.DeltaTimeF, Vec2.Up));
     }
 
     private void Die()
     {
-        Program.Game.MainScene.Objects = 
-            [new StringRenderer(new Font(StringRenderer.DEFALUT_FONT_NAME, 20), "YOU DIED", Color.Red) 
-            { Position = GetMaster().GameWindow.WindowCenter.ToVec2(GetMaster().VirtualScale) }];
+        Program.Game.MainScene.Init = 
+            [new StringRenderer(Assets.mainFont, "YOU DIED", Color.Red) 
+            { Position = GetMaster().Center.ToVec2(GetMaster().VirtualScale) }];
 
         Wrint.Error("You died");
         GetMaster().TimeMaster.Stop();
@@ -156,14 +151,18 @@ internal class Pipe : CollidingBitmapRenderer
     public static float spawnDelay = 2.66f;
     public static float destroyAfter = 5;
 
-    private float timer;
+    //private float timer;
 
     public Pipe() : base(Assets.pipeSprite) { }
+    public override void OnCreate(Hierarchy h, GameMaster m)
+    {
+        base.OnCreate(h, m);
+        new Counter(m.TimeMaster, destroyAfter, false, End);
+    }
     public override void OnUpdate()
     {
         base.OnUpdate();
-        Position -= new Vec2(speed, 0) * GetMaster().TimeMaster.DeltaTime;
-        timer += GetMaster().TimeMaster.DeltaTime;
-        if (timer > destroyAfter) Destroy(Program.Game.MainScene);
+        Position -= new Vec2(speed, 0) * GetMaster().TimeMaster.DeltaTimeF;
     }
+    private void End() => Destroy(Program.Game.MainScene);
 }
