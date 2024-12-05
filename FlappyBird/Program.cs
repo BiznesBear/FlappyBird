@@ -105,7 +105,7 @@ internal class Player : GravityTransform
     {
         base.OnCreate(h, m);
         bitmap.SetMaster(m);
-        Position = GetMaster().Center.ToVec2(GetMaster().VirtualScale) - Vec2.Right;
+        Position = Master.Center.ToVec2(Master.VirtualScale) - Vec2.Right;
     }
     public override void OnUpdate()
     {
@@ -115,34 +115,30 @@ internal class Player : GravityTransform
         bitmap.OnUpdate();
 
         // check if bird is still in our view borders
-        if (Position.Y > 5f || Position.Y < 0f) 
-            Die();
-
-        if (bitmap.IsColliding(Program.Game.MainScene.colliders,out ICollide? collider))
-        {
-            Die();
-        }
+        if (Position.Y > 5f || 
+            Position.Y < 0f || 
+            bitmap.IsColliding(Program.Game.MainScene.colliders, out ICollide? collider)) Die();
     }
     public override void OnDraw()
     {
         base.OnDraw();
         bitmap.OnDraw();
-        bitmap.Draw(GetMaster(),GetMaster().Renderer);
+        bitmap.Draw(Master, Master.Renderer);
     }
     public void Jump()
     {
         ResetVelocity();
-        AddForce(new(jumpStrenght * GetMaster().TimeMaster.DeltaTimeF, Vec2.Up));
+        AddForce(new(jumpStrenght * Master.TimeMaster.DeltaTimeF, Vec2.Up));
     }
 
     private void Die()
     {
         Program.Game.MainScene.Init = 
             [new StringRenderer(Assets.mainFont, "YOU DIED", Color.Red) 
-            { Position = GetMaster().Center.ToVec2(GetMaster().VirtualScale) }];
+            { Position = Master.Center.ToVec2(Master.VirtualScale) }];
 
         Wrint.Error("You died");
-        GetMaster().TimeMaster.Stop();
+        Master.TimeMaster.Stop();
     }
 }
 internal class Pipe : CollidingBitmapRenderer
@@ -150,8 +146,6 @@ internal class Pipe : CollidingBitmapRenderer
     public static float speed = 1.3f;
     public static float spawnDelay = 2.66f;
     public static float destroyAfter = 5;
-
-    //private float timer;
 
     public Pipe() : base(Assets.pipeSprite) { }
     public override void OnCreate(Hierarchy h, GameMaster m)
@@ -162,7 +156,7 @@ internal class Pipe : CollidingBitmapRenderer
     public override void OnUpdate()
     {
         base.OnUpdate();
-        Position -= new Vec2(speed, 0) * GetMaster().TimeMaster.DeltaTimeF;
+        Position -= new Vec2(speed, 0) * Master.TimeMaster.DeltaTimeF;
     }
     private void End() => Destroy(Program.Game.MainScene);
 }
