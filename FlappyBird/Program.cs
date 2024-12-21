@@ -6,7 +6,6 @@ using WFGL.Rendering;
 using WFGL.Utilities;
 using WFGL.Components;
 using WFGL.UI;
-using WFGL;
 
 namespace FlappyBird;
 
@@ -15,8 +14,9 @@ internal static class Assets
     public static readonly Bitmap birdSprite = new("Bird.png");
     public static readonly Bitmap pipeSprite = new("Pipe.png");
     public static readonly Bitmap background = new("Background.png");
-    public static readonly Font mainFont = new(StringRenderer.DEFALUT_FONT_NAME, 20);
+    public static readonly Font mainFont = new(StringRenderer.DEFALUT_FONT_NAME, 22);
 }
+
 internal class Program
 {
     #pragma warning disable CS8618 
@@ -26,8 +26,7 @@ internal class Program
 
     private static void Main(string[] args)
     {
-        WFGLSettings.All = true;
-        GameWindow win = new(GameWindowOptions.Default with { Title = "FlappyBird", Size = new(800,800)});
+        GameWindow win = new(GameWindowOptions.Default with { Title = "FlappyBird", Size = new(800, 800)});
         Game = new(win);
         Game.Load();
     }
@@ -74,11 +73,12 @@ internal class MainScene : Hierarchy
             player
         ];
         colliders.Update();
-        background.Scale = GetMaster().VirtualSize.ToVec2(GetMaster().VirtualScale) * 2;
+
+        background.Scale = Master.VirtualSize.ToVec2(Master.VirtualScale) * 2;
         new Counter(m.TimeMaster, Pipe.spawnDelay, true, SpawnPipes);
     }
 
-    // TODO: Add some sort of optimalizations - use old pipes instead of creating new ones.
+    // TODO: Add object pooling
     public void SpawnPipes()
     {
         var r = new Random();
@@ -143,8 +143,8 @@ internal class Player : GravityTransform
 }
 internal class Pipe : CollidingBitmapRenderer
 {
-    public static float speed = 1.3f;
-    public static float spawnDelay = 2.66f;
+    public static float speed = 1.5f;
+    public static float spawnDelay = 2.7f;
     public static float destroyAfter = 5;
 
     public Pipe() : base(Assets.pipeSprite) { }
@@ -153,6 +153,7 @@ internal class Pipe : CollidingBitmapRenderer
         base.OnCreate(h, m);
         new Counter(m.TimeMaster, destroyAfter, false, End);
     }
+
     public override void OnUpdate()
     {
         base.OnUpdate();
