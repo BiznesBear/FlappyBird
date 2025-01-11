@@ -1,9 +1,9 @@
-﻿using WFGL.Core;
+﻿using WFGL;
+using WFGL.Core;
 using WFGL.Input;
 using WFGL.Objects;
-using WFGL.Physics;
+using WFGL.Pseudo.Physics;
 using WFGL.Rendering;
-using WFGL.Utilities;
 using WFGL.Components;
 using WFGL.UI;
 
@@ -26,6 +26,7 @@ internal class Program
 
     private static void Main(string[] args)
     {
+        Wrint.All = true;
         GameWindow win = new(GameWindowOptions.Default with { Title = "FlappyBird", Size = new(800, 800)});
         Game = new(win);
         Game.Load();
@@ -39,6 +40,7 @@ internal class Game : GameMaster
         WindowAspectLock = true;
         GameWindow.RegisterInput(new GameInput());
         MainScene = new(this);
+        
         RegisterHierarchy(MainScene);
     }
 }
@@ -62,20 +64,31 @@ internal class MainScene : Hierarchy
     public readonly BitmapRenderer background;
     public readonly Group<ICollide> colliders;
 
+    private Font font = new(StringRenderer.DEFALUT_FONT_NAME, 15);
+    private StringRenderer fpsText;
+
     public MainScene(GameMaster m) : base(m) 
     { 
         player = new();
         background = new(Assets.background);
         colliders = new(this);
+        fpsText = new(font, string.Empty);
 
         Init = [
             background,
-            player
+            player,
+            fpsText
         ];
-        colliders.Update();
+
+        colliders.UpdateHashSet();
 
         background.Scale = Master.VirtualSize.ToVec2(Master.VirtualScale) * 2;
         new Counter(m.TimeMaster, Pipe.spawnDelay, true, SpawnPipes);
+    }
+    public override void OnUpdate()
+    {
+        base.OnUpdate();
+        fpsText.Content = $"FPS: {Master.TimeMaster.FramesPerSecond}"; 
     }
 
     // TODO: Add object pooling
@@ -88,13 +101,14 @@ internal class MainScene : Hierarchy
         Pipe pipeDown = new() { Position = new(4.5f, offset + 5), Scale = new(13, 20) };
 
         Init = [pipeUp, pipeDown];
-        colliders.Update();
+        colliders.UpdateHashSet();
     }
 }
 
 internal class Player : GravityTransform
 {
     private const float jumpStrenght = 175;
+    private const float maxVelocity = 3;
     private CollidingBitmapRenderer bitmap;
     public Player()
     {
@@ -119,16 +133,18 @@ internal class Player : GravityTransform
             Position.Y < 0f || 
             bitmap.IsColliding(Program.Game.MainScene.colliders, out ICollide? collider)) Die();
     }
+
     public override void OnDraw()
     {
         base.OnDraw();
         bitmap.OnDraw();
         bitmap.Draw(Master, Master.Renderer);
     }
+
     public void Jump()
     {
         ResetVelocity();
-        AddForce(new(jumpStrenght * Master.TimeMaster.DeltaTimeF, Vec2.Up));
+        AddForce(new(Math.Clamp(jumpStrenght * Master.TimeMaster.DeltaTimeF,-maxVelocity, maxVelocity), Vec2.Up));
     }
 
     private void Die()
@@ -143,7 +159,7 @@ internal class Player : GravityTransform
 }
 internal class Pipe : CollidingBitmapRenderer
 {
-    public static float speed = 1.5f;
+    public static float speed = 1.3f;
     public static float spawnDelay = 2.7f;
     public static float destroyAfter = 5;
 
@@ -151,7 +167,7 @@ internal class Pipe : CollidingBitmapRenderer
     public override void OnCreate(Hierarchy h, GameMaster m)
     {
         base.OnCreate(h, m);
-        new Counter(m.TimeMaster, destroyAfter, false, End);
+        new Counter(m.TimeMaster, destroyAfter, false, () => { Destroy(Program.Game.MainScene); });
     }
 
     public override void OnUpdate()
@@ -159,5 +175,4 @@ internal class Pipe : CollidingBitmapRenderer
         base.OnUpdate();
         Position -= new Vec2(speed, 0) * Master.TimeMaster.DeltaTimeF;
     }
-    private void End() => Destroy(Program.Game.MainScene);
 }
