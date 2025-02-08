@@ -162,7 +162,7 @@ internal class Pipe : CollidingBitmapRenderer
     public static float speed = 1.3f;
     public static float spawnDelay = 2.7f;
     public static float destroyAfter = 5;
-
+    
     public Pipe() : base(Assets.pipeSprite) { }
     public override void OnCreate(Hierarchy h, GameMaster m)
     {
